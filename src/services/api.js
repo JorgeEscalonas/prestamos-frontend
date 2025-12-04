@@ -58,7 +58,11 @@ api.interceptors.response.use(
 
     // ====== 422 Validación (backend) ======
     if (error.response?.status === 422) {
-      return Promise.reject(error.response.data)
+      const errorData = error.response.data
+      return Promise.reject({
+        message: errorData.message || errorData.error || 'Error de validación',
+        errors: errorData.errors || {}
+      })
     }
 
     // ====== 500 ======

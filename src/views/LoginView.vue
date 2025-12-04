@@ -44,6 +44,9 @@
               </div>
 
               <div>
+                <div v-if="errorMessage" class="mb-4 p-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-900/50 dark:text-red-400" role="alert">
+                  {{ errorMessage }}
+                </div>
                 <form @submit.prevent="handleSubmit">
                   <div class="space-y-5">
 
@@ -214,24 +217,65 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/store/auth'
 import CommonGridShape from '@/components/common/CommonGridShape.vue'
 import FullScreenLayout from '@/components/layout/FullScreenLayout.vue'
+
+const router = useRouter()
+const authStore = useAuthStore()
 
 const cedula = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const keepLoggedIn = ref(false)
+const errorMessage = ref('')
 
 const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value
 }
 
-const handleSubmit = () => {
-  console.log('Form submitted', {
-    cedula: cedula.value,
-    password: password.value,
-    keepLoggedIn: keepLoggedIn.value,
-  })
+const handleSubmit = async () => {
+  errorMessage.value = ''
+  
+  if (!cedula.value || !password.value) {
+    errorMessage.value = 'Por favor ingresa tu cédula y contraseña'
+    return
+  }
+
+  try {
+    await authStore.login({
+      cedula: cedula.value,
+      password: password.value
+    }, keepLoggedIn.value)
+    
+    // Esperar a que el estado se actualice completamente
+    await nextTick()
+    
+    // Verificar que el token se guardó correctamente
+    if (authStore.token && authStore.isAuthenticated) {
+      // Redirigir al dashboard tras login exitoso
+      // Usar replace para evitar que el usuario pueda volver al login con el botón atrás
+      await router.replace('/dashboard')
+    } else {
+      throw new Error('No se pudo guardar la sesión. Intenta nuevamente.')
+    }
+    
+  } catch (error) {
+    console.error('Login error:', error)
+    // Extraer el mensaje de error de diferentes formatos posibles
+    let message = 'Error al iniciar sesión. Verifica tus credenciales.'
+    
+    if (error.response?.data?.message) {
+      message = error.response.data.message
+    } else if (error.response?.data?.error) {
+      message = error.response.data.error
+    } else if (error.message) {
+      message = error.message
+    }
+    
+    errorMessage.value = message
+  }
 }
 </script>

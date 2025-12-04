@@ -79,11 +79,12 @@ const router = createRouter({
       redirect: '/dashboard'
     },
 
-    // 404 fallback
+    // 404 fallback (ruta privada)
     {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: NotFoundView
+      // No tiene meta.public, por lo que requiere autenticación
     }
   ]
 })
@@ -91,19 +92,28 @@ const router = createRouter({
 /* ------------------------------------------------------------------
    PROTECCIÓN DE RUTAS (GUARD GLOBAL)
    - Bloquea rutas privadas si no hay sesión
-   - Permite libre acceso a /login
+   - Redirige usuarios autenticados que intentan acceder a /login
+   - Permite libre acceso a /login solo si no hay sesión
 ------------------------------------------------------------------ */
 router.beforeEach((to, from, next) => {
   const auth = useAuthStore()
 
+  // Si la ruta es pública (como /login)
   if (to.meta.public) {
+    // Si el usuario ya está autenticado, redirigir al dashboard
+    if (auth.isAuthenticated || auth.token) {
+      return next('/dashboard')
+    }
+    // Si no está autenticado, permitir acceso a rutas públicas
     return next()
   }
 
-  if (!auth.token) {
+  // Si la ruta es privada y no hay token, redirigir al login
+  if (!auth.isAuthenticated && !auth.token) {
     return next('/login')
   }
 
+  // Usuario autenticado accediendo a ruta privada
   next()
 })
 
