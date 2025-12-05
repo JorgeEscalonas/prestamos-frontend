@@ -1,76 +1,120 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/store/auth'
 
-const routes = [
-  {
-    path: '/login',
-    name: 'login',
-    component: () => import('../views/LoginView.vue'),
-    meta: { requiresAuth: false }
-  },
-  {
-    path: '/dashboard',
-    name: 'dashboard',
-    component: () => import('../views/DashboardView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/clientes',
-    name: 'clientes',
-    component: () => import('../views/ClientesView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/clientes/:id',
-    name: 'cliente-detalle',
-    component: () => import('../views/ClienteView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/prestamos',
-    name: 'prestamos',
-    component: () => import('../views/PrestamosView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/prestamos/:id',
-    name: 'prestamo-detalle',
-    component: () => import('../views/PrestamoView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/pagos',
-    name: 'pagos',
-    component: () => import('../views/PagosView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/config',
-    name: 'config',
-    component: () => import('../views/ConfigView.vue'),
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/reports',
-    name: 'reports',
-    component: () => import('../views/ReportsView.vue'),
-    meta: { requiresAuth: true }
-  },
-  // Redirect root → dashboard
-  {
-    path: '/',
-    redirect: '/dashboard'
-  },
-  // 404 fallback
-  {
-    path: '/:pathMatch(.*)*',
-    name: 'not-found',
-    component: () => import('../views/NotFoundView.vue')
-  }
-]
+// Lazy load views (mejor rendimiento)
+const LoginView = () => import('@/views/LoginView.vue')
+const DashboardView = () => import('@/views/DashboardView.vue')
+const ClientesView = () => import('@/views/ClientesView.vue')
+const ClienteView = () => import('@/views/ClienteView.vue')
+const PrestamosView = () => import('@/views/PrestamosView.vue')
+const PrestamoView = () => import('@/views/PrestamoView.vue')
+const PagosView = () => import('@/views/PagosView.vue')
+const ConfigView = () => import('@/views/ConfigView.vue')
+const ReportsView = () => import('@/views/ReportsView.vue')
+const NotFoundView = () => import('@/views/NotFoundView.vue')
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes: [
+    {
+      path: '/login',
+      name: 'login',
+      component: LoginView,
+      meta: { public: true }
+    },
+
+    {
+      path: '/dashboard',
+      name: 'dashboard',
+      component: DashboardView
+    },
+
+    {
+      path: '/clientes',
+      name: 'clientes',
+      component: ClientesView
+    },
+
+    {
+      path: '/clientes/:id',
+      name: 'cliente-detalle',
+      component: ClienteView,
+      props: true
+    },
+
+    {
+      path: '/prestamos',
+      name: 'prestamos',
+      component: PrestamosView
+    },
+
+    {
+      path: '/prestamos/:id',
+      name: 'prestamo-detalle',
+      component: PrestamoView,
+      props: true
+    },
+
+    {
+      path: '/pagos',
+      name: 'pagos',
+      component: PagosView
+    },
+
+    {
+      path: '/config',
+      name: 'config',
+      component: ConfigView
+    },
+
+    {
+      path: '/reports',
+      name: 'reports',
+      component: ReportsView
+    },
+
+    // Redirect root → dashboard
+    {
+      path: '/',
+      redirect: '/dashboard'
+    },
+
+    // 404 fallback (ruta privada)
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: NotFoundView
+      // No tiene meta.public, por lo que requiere autenticación
+    }
+  ]
+})
+
+/* ------------------------------------------------------------------
+   PROTECCIÓN DE RUTAS (GUARD GLOBAL)
+   - Bloquea rutas privadas si no hay sesión
+   - Redirige usuarios autenticados que intentan acceder a /login
+   - Permite libre acceso a /login solo si no hay sesión
+------------------------------------------------------------------ */
+router.beforeEach((to, from, next) => {
+  const auth = useAuthStore()
+
+  // Si la ruta es pública (como /login)
+  if (to.meta.public) {
+    // Si el usuario ya está autenticado, redirigir al dashboard
+    if (auth.isAuthenticated || auth.token) {
+      return next('/dashboard')
+    }
+    // Si no está autenticado, permitir acceso a rutas públicas
+    return next()
+  }
+
+  // Si la ruta es privada y no hay token, redirigir al login
+  if (!auth.isAuthenticated && !auth.token) {
+    return next('/login')
+  }
+
+  // Usuario autenticado accediendo a ruta privada
+  next()
 })
 
 export default router
