@@ -21,6 +21,12 @@ onMounted(() => {
   const initialTheme = savedTheme || 'light' // Default to light theme
 
   theme.value = initialTheme
+  // Apply theme immediately
+  if (initialTheme === 'dark') {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
   isInitialized.value = true
 })
 
@@ -41,14 +47,3 @@ provide('theme', {
 })
 </script>
 
-<script lang="ts">
-import { inject } from 'vue'
-
-export function useTheme() {
-  const theme = inject('theme')
-  if (!theme) {
-    throw new Error('useTheme must be used within a ThemeProvider')
-  }
-  return theme
-}
-</script>
