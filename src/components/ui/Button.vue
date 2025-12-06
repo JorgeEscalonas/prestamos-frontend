@@ -7,7 +7,7 @@
       className,
       { 'cursor-not-allowed opacity-50': disabled },
     ]"
-    @click="onClick"
+
     :disabled="disabled"
   >
     <span v-if="startIcon" class="flex items-center">
@@ -25,34 +25,26 @@
 <script setup>
 import { computed } from 'vue'
 
-const props = withDefaults(
-  defineProps({
-    size: { type: String, default: 'md' },
-    variant: { type: String, default: 'primary' },
-    startIcon: { type: Object, default: null },
-    endIcon: { type: Object, default: null },
-    onClick: { type: Function, default: null },
-    className: { type: String, default: '' },
-    disabled: { type: Boolean, default: false },
-  }),
-  {}
-)
+const props = defineProps({
+  size: { type: String, default: 'md' },
+  variant: { type: String, default: 'primary' },
+  startIcon: { type: Object, default: null },
+  endIcon: { type: Object, default: null },
+  className: { type: String, default: '' },
+  disabled: { type: Boolean, default: false },
+})
 
 const sizeClasses = {
-  sm: 'px-4 py-3 text-sm',
-  md: 'px-5 py-3.5 text-sm',
+  sm: 'px-3 py-2 text-sm',
+  md: 'px-4 py-2.5 text-sm',
 }
 
 const variantClasses = {
   primary:
-    'bg-brand-500 text-white shadow-theme-xs hover:bg-brand-600 disabled:bg-brand-300',
+    'bg-blue-600 text-white shadow-theme-xs hover:bg-blue-700 disabled:bg-blue-300',
   outline:
     'bg-white text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-400 dark:ring-gray-700 dark:hover:bg-white/[0.03] dark:hover:text-gray-300',
 }
 
-const onClick = () => {
-  if (!props.disabled && props.onClick) {
-    props.onClick()
-  }
-}
+
 </script>
