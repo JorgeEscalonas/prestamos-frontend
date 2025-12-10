@@ -10,6 +10,7 @@
           :options="field.options"
           :placeholder="field.placeholder"
           :required="field.required"
+          @create-new="handleCreateNew"
         />
       </div>
     </div>
@@ -38,12 +39,13 @@
 import { ref, watch } from 'vue';
 import Input from '@/components/ui/Input.vue';
 import Select from '@/components/ui/Select.vue';
+import Combobox from '@/components/ui/Combobox.vue';
 
 const props = defineProps({
   fields: {
     type: Array,
     required: true,
-    // { name, label, type: 'input'|'select', inputType: 'text'|'number'|..., options: [], required: bool, class: string }
+    // { name, label, type: 'input'|'select'|'combobox', inputType: 'text'|'number'|..., options: [], required: bool, class: string }
   },
   initialValues: {
     type: Object,
@@ -55,7 +57,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['submit', 'cancel']);
+const emit = defineEmits(['submit', 'cancel', 'create-new']);
 
 const formData = ref({ ...props.initialValues });
 
@@ -72,7 +74,12 @@ watch(() => props.initialValues, (newVal) => {
 
 const getComponent = (type) => {
   if (type === 'select') return Select;
+  if (type === 'combobox') return Combobox;
   return Input;
+};
+
+const handleCreateNew = () => {
+  emit('create-new');
 };
 
 const handleSubmit = () => {

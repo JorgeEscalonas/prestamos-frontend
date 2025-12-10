@@ -27,7 +27,8 @@ export const useClientesStore = defineStore("clientes", {
     },
 
     async createCliente(payload) {
-      await api.post("/clientes", payload);
+      const { data } = await api.post("/clientes", payload);
+      return data;
     },
 
     async updateCliente(id, payload) {

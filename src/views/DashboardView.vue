@@ -14,7 +14,7 @@
       </div>
 
       <div class="col-span-12 xl:col-span-5">
-        <customer-demographic />
+        <!-- <customer-demographic /> -->
       </div>
 
       <div class="col-span-12 xl:col-span-7">

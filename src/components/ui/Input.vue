@@ -15,7 +15,7 @@
 
 <script setup>
 defineProps({
-  modelValue: String,
+  modelValue: [String, Number],
   label: String,
   type: { type: String, default: "text" }
 });
