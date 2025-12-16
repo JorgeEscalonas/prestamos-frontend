@@ -38,12 +38,14 @@
             {{ formatCurrency(item.saldoPendiente) }}
           </template>
           <template #cell-saldoBolivares="{ item }">
-            <span v-if="calculateSaldoBolivares(item) !== null">
-              {{ formatCurrency(calculateSaldoBolivares(item)) }}
-            </span>
-            <span v-else class="text-gray-400 italic">
-              -
-            </span>
+            <div v-if="calculateSaldoBolivares(item) !== null">
+              <span class="font-semibold text-blue-600 dark:text-blue-400">
+                {{ formatCurrency(calculateSaldoBolivares(item), 'VES') }}
+              </span>
+            </div>
+            <div v-else class="text-gray-400 text-sm italic">
+              Sin tasa
+            </div>
           </template>
           <template #cell-fechaRegistro="{ item }">
             <span class="text-gray-500 text-theme-sm dark:text-gray-400">
@@ -309,19 +311,25 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString("es-VE");
 };
 
-const formatCurrency = (value) => {
-  return new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'VES' }).format(value);
+const formatCurrency = (value, currency = 'USD') => {
+  return new Intl.NumberFormat('es-VE', { style: 'currency', currency: currency }).format(value);
 };
 
 const calculateSaldoBolivares = (item) => {
   if (!item.saldoPendiente) return 0;
-  const tasa = tasas.value.find(t => t.id == item.tasaId);
-
-  if (!tasa || !tasa.valor) {
+  
+  // Use the latest USD->VES rate instead of the loan's tasaId
+  const currentTasa = tasas.value.find(t => t.monedaOrigen === 'USD' && t.monedaDestino === 'VES') || tasas.value[0];
+  
+  if (!currentTasa || !currentTasa.valor) {
     return null;
   }
 
-  return item.saldoPendiente * tasa.valor;
+  return item.saldoPendiente * currentTasa.valor;
+};
+
+const getCurrentTasa = () => {
+  return tasas.value.find(t => t.monedaOrigen === 'USD' && t.monedaDestino === 'VES') || tasas.value[0];
 };
 
 const getStatusClass = (status) => {

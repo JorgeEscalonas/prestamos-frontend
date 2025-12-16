@@ -2,7 +2,11 @@
   <form @submit.prevent="handleSubmit" class="space-y-5">
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
       <div v-for="field in fields" :key="field.name" :class="field.class || ''">
+        <div v-if="field.type === 'slot'">
+          <slot :name="field.name" :form-data="formData"></slot>
+        </div>
         <component
+          v-else
           :is="getComponent(field.type)"
           v-model="formData[field.name]"
           :label="field.label"
@@ -45,7 +49,7 @@ const props = defineProps({
   fields: {
     type: Array,
     required: true,
-    // { name, label, type: 'input'|'select'|'combobox', inputType: 'text'|'number'|..., options: [], required: bool, class: string }
+    // { name, label, type: 'input'|'select'|'combobox'|'slot', inputType: 'text'|..., options: [], required: bool, class: string }
   },
   initialValues: {
     type: Object,
@@ -57,19 +61,30 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['submit', 'cancel', 'create-new']);
+const emit = defineEmits(['submit', 'cancel', 'create-new', 'change']);
 
 const formData = ref({ ...props.initialValues });
 
 // Initialize formData with empty strings for fields not in initialValues to avoid uncontrolled input warnings
-props.fields.forEach(field => {
-  if (formData.value[field.name] === undefined) {
-    formData.value[field.name] = '';
-  }
-});
+const initData = () => {
+    props.fields.forEach(field => {
+      // Don't overwrite if it exists (from initialValues)
+      if (formData.value[field.name] === undefined && field.type !== 'slot') {
+        formData.value[field.name] = '';
+      }
+    });
+};
+
+initData();
 
 watch(() => props.initialValues, (newVal) => {
   formData.value = { ...newVal };
+  initData();
+}, { deep: true });
+
+// Emit changes whenever formData changes
+watch(formData, (newVal) => {
+    emit('change', newVal);
 }, { deep: true });
 
 const getComponent = (type) => {
