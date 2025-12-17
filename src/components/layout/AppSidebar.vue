@@ -70,8 +70,7 @@
                   :class="[
                     'menu-item group w-full',
                     {
-                      'menu-item-active': isSubmenuOpen(groupIndex, index),
-                      'menu-item-inactive': !isSubmenuOpen(groupIndex, index),
+                      'menu-item-inactive': true, 
                     },
                     !isExpanded
                       ? 'lg:justify-center'
@@ -81,7 +80,7 @@
                   <span
                     :class="[
                       isSubmenuOpen(groupIndex, index)
-                        ? 'menu-item-icon-active'
+                        ? 'menu-item-icon-active text-blue-600 dark:text-blue-500'
                         : 'menu-item-icon-inactive',
                     ]"
                   >
@@ -97,7 +96,7 @@
                     :class="[
                       'ml-auto w-5 h-5 transition-transform duration-200',
                       {
-                        'rotate-180 text-brand-500': isSubmenuOpen(
+                        'rotate-180': isSubmenuOpen(
                           groupIndex,
                           index
                         ),
@@ -160,7 +159,7 @@
                           ]"
                         >
                           {{ subItem.name }}
-                          <span class="flex items-center gap-1 ml-auto">
+                          <span class="flex items-center gap-4 ml-auto">
                             <span
                               v-if="subItem.new"
                               :class="[
@@ -260,7 +259,10 @@ const menuGroups = [
       {
         icon: SettingsIcon,
         name: "Configuración",
-        path: "/config",
+        subItems: [
+          { name: "Tasas", path: "/config/tasas" },
+          { name: "Usuarios", path: "/config/usuarios" },
+        ],
       },
       {
         icon: PieChartIcon,
@@ -278,25 +280,29 @@ const toggleSubmenu = (groupIndex, itemIndex) => {
   openSubmenu.value = openSubmenu.value === key ? null : key;
 };
 
-const isAnySubmenuRouteActive = computed(() => {
-  return menuGroups.some((group) =>
-    group.items.some(
-      (item) =>
-        item.subItems && item.subItems.some((subItem) => isActive(subItem.path))
-    )
-  );
-});
-
 const isSubmenuOpen = (groupIndex, itemIndex) => {
   const key = `${groupIndex}-${itemIndex}`;
-  return (
-    openSubmenu.value === key ||
-    (isAnySubmenuRouteActive.value &&
-      menuGroups[groupIndex].items[itemIndex].subItems?.some((subItem) =>
-        isActive(subItem.path)
-      ))
-  );
+  return openSubmenu.value === key;
 };
+
+
+
+// Better approach with watch:
+import { watch } from 'vue';
+
+watch(
+  () => route.path,
+  () => {
+    menuGroups.forEach((group, groupIndex) => {
+      group.items.forEach((item, itemIndex) => {
+        if (item.subItems && item.subItems.some(sub => isActive(sub.path))) {
+          openSubmenu.value = `${groupIndex}-${itemIndex}`;
+        }
+      });
+    });
+  },
+  { immediate: true }
+);
 
 const startTransition = (el) => {
   el.style.height = "auto";

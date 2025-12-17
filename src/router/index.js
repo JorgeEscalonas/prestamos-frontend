@@ -9,9 +9,12 @@ const ClienteView = () => import('@/views/ClienteView.vue')
 const PrestamosView = () => import('@/views/PrestamosView.vue')
 const PrestamoView = () => import('@/views/PrestamoView.vue')
 const PagosView = () => import('@/views/PagosView.vue')
-const ConfigView = () => import('@/views/ConfigView.vue')
 const ReportsView = () => import('@/views/ReportsView.vue')
 const NotFoundView = () => import('@/views/NotFoundView.vue')
+
+// Config Views
+const TasasView = () => import('@/views/config/TasasView.vue')
+const UsuariosView = () => import('@/views/config/UsuariosView.vue')
 
 const router = createRouter({
   history: createWebHistory(),
@@ -61,10 +64,22 @@ const router = createRouter({
       component: PagosView
     },
 
+    // Rutas de Configuración
+    {
+      path: '/config/tasas',
+      name: 'config-tasas',
+      component: TasasView,
+      meta: { requiresAuth: true, role: "admin" }
+    },
+    {
+      path: '/config/usuarios',
+      name: 'config-usuarios',
+      component: UsuariosView,
+      meta: { requiresAuth: true, role: "admin" }
+    },
     {
       path: '/config',
-      name: 'config',
-      component: ConfigView
+      redirect: '/config/tasas'
     },
 
     {
@@ -113,7 +128,6 @@ router.beforeEach((to, from, next) => {
     return next('/login')
   }
 
-  // Usuario autenticado accediendo a ruta privada
   next()
 })
 
