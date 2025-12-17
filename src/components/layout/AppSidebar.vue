@@ -210,6 +210,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import { useRoute } from "vue-router";
+import { useAuthStore } from "@/store/auth";
 
 import {
   GridIcon,
@@ -224,10 +225,11 @@ import {
 import { useSidebar } from "@/composables/useSidebar";
 
 const route = useRoute();
+const authStore = useAuthStore();
 
 const { isExpanded, isMobileOpen, isHovered, openSubmenu } = useSidebar();
 
-const menuGroups = [
+const allMenuGroups = [
   {
     title: "Principal",
     items: [
@@ -260,8 +262,8 @@ const menuGroups = [
         icon: SettingsIcon,
         name: "Configuración",
         subItems: [
-          { name: "Tasas", path: "/config/tasas" },
-          { name: "Usuarios", path: "/config/usuarios" },
+          { name: "Tasas", path: "/config/tasas", requiresRole: "admin" },
+          { name: "Usuarios", path: "/config/usuarios", requiresRole: "admin" },
         ],
       },
       {
@@ -272,6 +274,40 @@ const menuGroups = [
     ],
   },
 ];
+
+// Filtrar menú basado en el rol del usuario
+const menuGroups = computed(() => {
+  const userRole = authStore.user?.rol;
+  
+  return allMenuGroups.map(group => ({
+    ...group,
+    items: group.items.map(item => {
+      // Si el item tiene subItems, filtrarlos
+      if (item.subItems) {
+        const filteredSubItems = item.subItems.filter(subItem => {
+          // Si requiere un rol específico, verificar que el usuario lo tenga
+          if (subItem.requiresRole) {
+            return userRole === subItem.requiresRole;
+          }
+          return true;
+        });
+        
+        // Solo mostrar el item si tiene subItems después del filtrado
+        if (filteredSubItems.length > 0) {
+          return { ...item, subItems: filteredSubItems };
+        }
+        return null;
+      }
+      
+      // Para items sin subItems, verificar si requieren rol
+      if (item.requiresRole) {
+        return userRole === item.requiresRole ? item : null;
+      }
+      
+      return item;
+    }).filter(item => item !== null) // Remover items nulos
+  })).filter(group => group.items.length > 0); // Remover grupos vacíos
+});
 
 const isActive = (path) => route.path === path;
 
@@ -293,7 +329,7 @@ import { watch } from 'vue';
 watch(
   () => route.path,
   () => {
-    menuGroups.forEach((group, groupIndex) => {
+    menuGroups.value.forEach((group, groupIndex) => {
       group.items.forEach((item, itemIndex) => {
         if (item.subItems && item.subItems.some(sub => isActive(sub.path))) {
           openSubmenu.value = `${groupIndex}-${itemIndex}`;

@@ -10,6 +10,7 @@ const PrestamosView = () => import('@/views/PrestamosView.vue')
 const PrestamoView = () => import('@/views/PrestamoView.vue')
 const PagosView = () => import('@/views/PagosView.vue')
 const ReportsView = () => import('@/views/ReportsView.vue')
+const UserProfile = () => import('@/views/UserProfile.vue')
 const NotFoundView = () => import('@/views/NotFoundView.vue')
 
 // Config Views
@@ -30,6 +31,12 @@ const router = createRouter({
       path: '/dashboard',
       name: 'dashboard',
       component: DashboardView
+    },
+
+    {
+      path: '/profile',
+      name: 'profile',
+      component: UserProfile
     },
 
     {
@@ -109,6 +116,7 @@ const router = createRouter({
    - Bloquea rutas privadas si no hay sesión
    - Redirige usuarios autenticados que intentan acceder a /login
    - Permite libre acceso a /login solo si no hay sesión
+   - Valida roles de usuario para rutas protegidas
 ------------------------------------------------------------------ */
 router.beforeEach((to, from, next) => {
   const auth = useAuthStore()
@@ -126,6 +134,12 @@ router.beforeEach((to, from, next) => {
   // Si la ruta es privada y no hay token, redirigir al login
   if (!auth.isAuthenticated && !auth.token) {
     return next('/login')
+  }
+
+  // Validar rol si la ruta lo requiere
+  if (to.meta.role && auth.user?.rol !== to.meta.role) {
+    // Usuario no tiene el rol requerido, redirigir al dashboard
+    return next('/dashboard')
   }
 
   next()

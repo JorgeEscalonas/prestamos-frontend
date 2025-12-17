@@ -23,20 +23,42 @@
       </button>
     </template>
 
-    <DataTable :columns="columns" :data="store.usuarios || []" :showPagination="true">
+    <DataTable :columns="columns" :data="filteredUsuarios" :showPagination="true">
       
       <!-- Slot para Rol con Badges -->
-      <template #cell-role="{ item }">
+      <template #cell-rol="{ item }">
         <span
           class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
           :class="[
-            item.role === 'admin' 
+            item.rol === 'admin' 
               ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' 
               : 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
           ]"
         >
-          {{ formatRole(item.role) }}
+          {{ formatRole(item.rol) }}
         </span>
+      </template>
+
+      <template #cell-nivel_acceso="{ item }">
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input 
+            type="checkbox" 
+            class="sr-only peer" 
+            :checked="item.rol === 'admin'"
+            :disabled="authStore.user?.rol !== 'admin'"
+            @change="toggleRole(item)"
+          >
+          <div 
+            class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"
+            :class="{ 'opacity-50 cursor-not-allowed': authStore.user?.rol !== 'admin' }"
+          ></div>
+          <span 
+            class="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300"
+            :class="{ 'opacity-50': authStore.user?.rol !== 'admin' }"
+          >
+            {{ item.rol === 'admin' ? 'Full' : 'Restringido' }}
+          </span>
+        </label>
       </template>
 
       <!-- Slot para Fecha (opcional si existe createdAt) -->
@@ -127,23 +149,32 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useUsuariosStore } from "@/store/usuarios";
+import { useAuthStore } from "@/store/auth";
 import ComponentCard from "@/components/common/ComponentCard.vue";
 import DataTable from "@/components/tables/DataTable.vue";
 import Modal from "@/components/ui/Modal.vue";
 import DataForm from "@/components/Forms/DataForm.vue";
 
 const store = useUsuariosStore();
+const authStore = useAuthStore();
 
 const showModal = ref(false);
 const selected = ref(null);
 
+// Filtrar usuarios excluyendo al usuario actual
+const filteredUsuarios = computed(() => {
+  if (!store.usuarios || !authStore.user) return [];
+  return store.usuarios.filter(usuario => usuario.id !== authStore.user.id);
+});
+
 const columns = [
-  { key: "username", label: "Usuario", headerClass: "w-1/4" },
+  { key: "cedula", label: "Cédula", headerClass: "w-1/4" },
   { key: "nombre", label: "Nombre", headerClass: "w-1/4" },
-  { key: "role", label: "Rol", headerClass: "w-1/4" },
-  { key: "actions", label: "Acciones", headerClass: "w-1/4 text-right" },
+  { key: "rol", label: "Rol", headerClass: "w-1/6" },
+  { key: "nivel_acceso", label: "Nivel de Acceso", headerClass: "w-1/4" },
+  { key: "actions", label: "Acciones", headerClass: "w-1/6 text-right" },
 ];
 
 const userFields = [
@@ -155,12 +186,12 @@ const userFields = [
     placeholder: "Ej. Juan Perez",
   },
   {
-    name: "username",
-    label: "Usuario / Email",
+    name: "cedula",
+    label: "Cédula",
     type: "input",
     inputType: "text",
     required: true,
-    placeholder: "usuario@ejemplo.com",
+    placeholder: "V-12345678",
   },
   {
     name: "password",
@@ -171,12 +202,12 @@ const userFields = [
     placeholder: "Dejar en blanco para mantener actual",
   },
   {
-    name: "role",
+    name: "rol",
     label: "Rol de Usuario",
     type: "select",
     options: [
       { label: "Administrador (Full Acceso)", value: "admin" },
-      { label: "Usuario (Restringido)", value: "user" },
+      { label: "Operador (Restringido)", value: "operador" },
     ],
     required: true,
   },
@@ -186,10 +217,10 @@ onMounted(() => {
   store.fetchUsuarios();
 });
 
-const formatRole = (role) => {
-  if (role === "admin") return "Administrador";
-  if (role === "user") return "Usuario";
-  return role;
+const formatRole = (rol) => {
+  if (rol === "admin") return "Administrador";
+  if (rol === "operador") return "Operador";
+  return rol;
 };
 
 const openCreateModal = () => {
@@ -216,6 +247,39 @@ const save = async (data) => {
     await store.createUsuario(data);
   }
   close();
+};
+
+const toggleRole = async (user) => {
+  // Verificar que el usuario actual sea admin
+  if (authStore.user?.rol !== 'admin') {
+    alert('Solo los administradores pueden cambiar el nivel de acceso de otros usuarios.');
+    return;
+  }
+
+  const newRole = user.rol === 'admin' ? 'operador' : 'admin';
+  
+  try {
+    await store.updateUsuario({
+      ...user,
+      rol: newRole
+    });
+    // La actualización se reflejará automáticamente después de fetchUsuarios en el store
+  } catch (error) {
+    console.error('Error completo al cambiar el rol:', error);
+    
+    // Mostrar mensaje más específico según el tipo de error
+    let errorMessage = 'No se pudo cambiar el nivel de acceso.';
+    
+    if (error.response?.status === 401) {
+      errorMessage = 'No tienes autorización para cambiar el nivel de acceso. Verifica tus permisos.';
+    } else if (error.response?.status === 403) {
+      errorMessage = 'No tienes permisos suficientes para esta acción.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    alert(errorMessage);
+  }
 };
 
 const close = () => {
