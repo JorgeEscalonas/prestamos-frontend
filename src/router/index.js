@@ -9,9 +9,13 @@ const ClienteView = () => import('@/views/ClienteView.vue')
 const PrestamosView = () => import('@/views/PrestamosView.vue')
 const PrestamoView = () => import('@/views/PrestamoView.vue')
 const PagosView = () => import('@/views/PagosView.vue')
-const ConfigView = () => import('@/views/ConfigView.vue')
 const ReportsView = () => import('@/views/ReportsView.vue')
+const UserProfile = () => import('@/views/UserProfile.vue')
 const NotFoundView = () => import('@/views/NotFoundView.vue')
+
+// Config Views
+const TasasView = () => import('@/views/config/TasasView.vue')
+const UsuariosView = () => import('@/views/config/UsuariosView.vue')
 
 const router = createRouter({
   history: createWebHistory(),
@@ -27,6 +31,12 @@ const router = createRouter({
       path: '/dashboard',
       name: 'dashboard',
       component: DashboardView
+    },
+
+    {
+      path: '/profile',
+      name: 'profile',
+      component: UserProfile
     },
 
     {
@@ -61,10 +71,22 @@ const router = createRouter({
       component: PagosView
     },
 
+    // Rutas de Configuración
+    {
+      path: '/config/tasas',
+      name: 'config-tasas',
+      component: TasasView,
+      meta: { requiresAuth: true, role: "admin" }
+    },
+    {
+      path: '/config/usuarios',
+      name: 'config-usuarios',
+      component: UsuariosView,
+      meta: { requiresAuth: true, role: "admin" }
+    },
     {
       path: '/config',
-      name: 'config',
-      component: ConfigView
+      redirect: '/config/tasas'
     },
 
     {
@@ -94,6 +116,7 @@ const router = createRouter({
    - Bloquea rutas privadas si no hay sesión
    - Redirige usuarios autenticados que intentan acceder a /login
    - Permite libre acceso a /login solo si no hay sesión
+   - Valida roles de usuario para rutas protegidas
 ------------------------------------------------------------------ */
 router.beforeEach((to, from, next) => {
   const auth = useAuthStore()
@@ -113,7 +136,12 @@ router.beforeEach((to, from, next) => {
     return next('/login')
   }
 
-  // Usuario autenticado accediendo a ruta privada
+  // Validar rol si la ruta lo requiere
+  if (to.meta.role && auth.user?.rol !== to.meta.role) {
+    // Usuario no tiene el rol requerido, redirigir al dashboard
+    return next('/dashboard')
+  }
+
   next()
 })
 

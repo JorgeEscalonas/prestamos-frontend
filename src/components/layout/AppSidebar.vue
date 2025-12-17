@@ -70,8 +70,7 @@
                   :class="[
                     'menu-item group w-full',
                     {
-                      'menu-item-active': isSubmenuOpen(groupIndex, index),
-                      'menu-item-inactive': !isSubmenuOpen(groupIndex, index),
+                      'menu-item-inactive': true, 
                     },
                     !isExpanded
                       ? 'lg:justify-center'
@@ -81,7 +80,7 @@
                   <span
                     :class="[
                       isSubmenuOpen(groupIndex, index)
-                        ? 'menu-item-icon-active'
+                        ? 'menu-item-icon-active text-blue-600 dark:text-blue-500'
                         : 'menu-item-icon-inactive',
                     ]"
                   >
@@ -97,7 +96,7 @@
                     :class="[
                       'ml-auto w-5 h-5 transition-transform duration-200',
                       {
-                        'rotate-180 text-brand-500': isSubmenuOpen(
+                        'rotate-180': isSubmenuOpen(
                           groupIndex,
                           index
                         ),
@@ -160,7 +159,7 @@
                           ]"
                         >
                           {{ subItem.name }}
-                          <span class="flex items-center gap-1 ml-auto">
+                          <span class="flex items-center gap-4 ml-auto">
                             <span
                               v-if="subItem.new"
                               :class="[
@@ -211,6 +210,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import { useRoute } from "vue-router";
+import { useAuthStore } from "@/store/auth";
 
 import {
   GridIcon,
@@ -225,10 +225,11 @@ import {
 import { useSidebar } from "@/composables/useSidebar";
 
 const route = useRoute();
+const authStore = useAuthStore();
 
 const { isExpanded, isMobileOpen, isHovered, openSubmenu } = useSidebar();
 
-const menuGroups = [
+const allMenuGroups = [
   {
     title: "Principal",
     items: [
@@ -260,7 +261,10 @@ const menuGroups = [
       {
         icon: SettingsIcon,
         name: "Configuración",
-        path: "/config",
+        subItems: [
+          { name: "Tasas", path: "/config/tasas", requiresRole: "admin" },
+          { name: "Usuarios", path: "/config/usuarios", requiresRole: "admin" },
+        ],
       },
       {
         icon: PieChartIcon,
@@ -271,6 +275,40 @@ const menuGroups = [
   },
 ];
 
+// Filtrar menú basado en el rol del usuario
+const menuGroups = computed(() => {
+  const userRole = authStore.user?.rol;
+  
+  return allMenuGroups.map(group => ({
+    ...group,
+    items: group.items.map(item => {
+      // Si el item tiene subItems, filtrarlos
+      if (item.subItems) {
+        const filteredSubItems = item.subItems.filter(subItem => {
+          // Si requiere un rol específico, verificar que el usuario lo tenga
+          if (subItem.requiresRole) {
+            return userRole === subItem.requiresRole;
+          }
+          return true;
+        });
+        
+        // Solo mostrar el item si tiene subItems después del filtrado
+        if (filteredSubItems.length > 0) {
+          return { ...item, subItems: filteredSubItems };
+        }
+        return null;
+      }
+      
+      // Para items sin subItems, verificar si requieren rol
+      if (item.requiresRole) {
+        return userRole === item.requiresRole ? item : null;
+      }
+      
+      return item;
+    }).filter(item => item !== null) // Remover items nulos
+  })).filter(group => group.items.length > 0); // Remover grupos vacíos
+});
+
 const isActive = (path) => route.path === path;
 
 const toggleSubmenu = (groupIndex, itemIndex) => {
@@ -278,25 +316,29 @@ const toggleSubmenu = (groupIndex, itemIndex) => {
   openSubmenu.value = openSubmenu.value === key ? null : key;
 };
 
-const isAnySubmenuRouteActive = computed(() => {
-  return menuGroups.some((group) =>
-    group.items.some(
-      (item) =>
-        item.subItems && item.subItems.some((subItem) => isActive(subItem.path))
-    )
-  );
-});
-
 const isSubmenuOpen = (groupIndex, itemIndex) => {
   const key = `${groupIndex}-${itemIndex}`;
-  return (
-    openSubmenu.value === key ||
-    (isAnySubmenuRouteActive.value &&
-      menuGroups[groupIndex].items[itemIndex].subItems?.some((subItem) =>
-        isActive(subItem.path)
-      ))
-  );
+  return openSubmenu.value === key;
 };
+
+
+
+// Better approach with watch:
+import { watch } from 'vue';
+
+watch(
+  () => route.path,
+  () => {
+    menuGroups.value.forEach((group, groupIndex) => {
+      group.items.forEach((item, itemIndex) => {
+        if (item.subItems && item.subItems.some(sub => isActive(sub.path))) {
+          openSubmenu.value = `${groupIndex}-${itemIndex}`;
+        }
+      });
+    });
+  },
+  { immediate: true }
+);
 
 const startTransition = (el) => {
   el.style.height = "auto";
