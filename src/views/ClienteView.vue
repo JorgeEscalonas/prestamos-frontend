@@ -41,14 +41,17 @@
         <!-- Loans Table -->
         <ComponentCard title="Préstamos Asociados">
           <DataTable :columns="loanColumns" :data="prestamos">
-            <template #cell-monto="{ item }">
-              {{ formatCurrency(item.monto) }}
+            <template #cell-montoPrestado="{ item }">
+              {{ formatCurrency(item.montoPrestado) }}
             </template>
-            <template #cell-tasa_interes="{ item }">
-              {{ item.tasa_interes }}%
+            <template #cell-porcentaje="{ item }">
+              {{ item.porcentaje }}%
             </template>
-            <template #cell-fecha_inicio="{ item }">
-              {{ formatDate(item.fecha_inicio) }}
+            <template #cell-saldoPendiente="{ item }">
+              {{ formatCurrency(item.saldoPendiente) }}
+            </template>
+            <template #cell-fechaRegistro="{ item }">
+              {{ formatDate(item.fechaRegistro) }}
             </template>
             <template #cell-estado="{ item }">
               <span :class="getStatusClass(item.estado)" class="px-2.5 py-0.5 rounded-full text-xs font-medium">
@@ -71,7 +74,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, h } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useClientesStore } from "@/store/clientes";
 import AdminLayout from "@/components/layout/AdminLayout.vue";
@@ -88,44 +91,62 @@ const loading = ref(false);
 const cliente = ref(null);
 const prestamos = ref([]);
 
-// Icon component definition
+// Icon component definition using render function to avoid runtime compiler warning
 const ArrowLeftIcon = {
-  template: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>`
+  render: () => h('svg', {
+    xmlns: 'http://www.w3.org/2000/svg',
+    fill: 'none',
+    viewBox: '0 0 24 24',
+    'stroke-width': '1.5',
+    stroke: 'currentColor',
+    class: 'w-5 h-5'
+  }, [
+    h('path', {
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+      d: 'M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18'
+    })
+  ])
 };
 
 const pageTitle = computed(() => cliente.value ? `Detalle de Cliente` : 'Cargando...');
 
 const loanColumns = [
-  { key: "monto", label: "Monto", headerClass: "text-left" },
-  { key: "tasa_interes", label: "Tasa", headerClass: "text-left" },
-  { key: "plazo", label: "Plazo (Meses)", headerClass: "text-left" },
-  { key: "fecha_inicio", label: "Fecha Inicio", headerClass: "text-left" },
+  { key: "montoPrestado", label: "Monto", headerClass: "text-left" },
+  { key: "porcentaje", label: "Tasa (%)", headerClass: "text-left" },
+  { key: "saldoPendiente", label: "Saldo Pendiente", headerClass: "text-left" },
+  { key: "fechaRegistro", label: "Fecha Inicio", headerClass: "text-left" },
   { key: "estado", label: "Estado", headerClass: "text-left" },
 ];
 
 onMounted(async () => {
   const id = route.params.id;
   if (id) {
-    // Intentar cargar desde el store primero para respuesta inmediata
-    const cachedClient = clientesStore.clientes.find(c => c.id == id);
-    if (cachedClient) {
-      cliente.value = cachedClient;
-    }
-
+    loading.value = true;
+    
     try {
-      loading.value = true;
-      // Fetch both concurrently
-      const [clientData, loansData] = await Promise.all([
-        clientesStore.getCliente(id),
-        clientesStore.getPrestamosByCliente(id)
-      ]);
+      // 1. Intentar obtener el cliente
+      // Primero verificamos si ya está en el store
+      let currentClient = clientesStore.clientes.find(c => c.id == id);
       
-      if (clientData) {
-        cliente.value = clientData;
+      // Si no está, cargamos la lista completa de clientes (ya que no existe endpoint individual)
+      if (!currentClient) {
+        await clientesStore.fetchClientes();
+        currentClient = clientesStore.clientes.find(c => c.id == id);
       }
+      
+      if (currentClient) {
+        cliente.value = currentClient;
+      } else {
+        console.error("Cliente no encontrado incluso después de cargar la lista.");
+      }
+
+      // 2. Obtener los préstamos del cliente
+      const loansData = await clientesStore.getPrestamosByCliente(id);
       prestamos.value = loansData || [];
+      
     } catch (error) {
-      console.error("Error fetching client details:", error);
+      console.error("Error cargando los datos:", error);
     } finally {
       loading.value = false;
     }
