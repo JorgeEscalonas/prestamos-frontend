@@ -215,7 +215,7 @@
 <script setup>
 import { ref, onMounted, computed } from "vue";
 import { storeToRefs } from "pinia";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
 import { usePrestamosStore } from "@/store/prestamos";
 import { useClientesStore } from "@/store/clientes";
 import { useTasasStore } from "@/store/tasas";
@@ -234,6 +234,7 @@ const { prestamos, loading } = storeToRefs(prestamosStore);
 const { clientes } = storeToRefs(clientesStore);
 const { tasas } = storeToRefs(tasasStore);
 const router = useRouter();
+const route = useRoute();
 
 const showCreateModal = ref(false);
 const showClientModal = ref(false);
@@ -304,6 +305,12 @@ onMounted(() => {
   prestamosStore.fetchPrestamos();
   clientesStore.fetchClientes();
   tasasStore.fetchTasas();
+
+  if (route.query.action === 'new') {
+    openCreateModal();
+    // Limpiar el query param de la URL sin recargar la página
+    router.replace({ query: {} });
+  }
 });
 
 const formatDate = (dateString) => {
