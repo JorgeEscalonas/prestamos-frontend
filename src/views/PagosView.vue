@@ -384,6 +384,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import AdminLayout from '@/components/layout/AdminLayout.vue';
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue';
@@ -404,6 +405,9 @@ const pagosStore = usePagosStore();
 const prestamosStore = usePrestamosStore();
 const clientesStore = useClientesStore();
 const tasasStore = useTasasStore();
+
+const route = useRoute();
+const router = useRouter();
 
 const { pagos } = storeToRefs(pagosStore);
 const { prestamos } = storeToRefs(prestamosStore);
@@ -506,6 +510,12 @@ onMounted(async () => {
         clientesStore.fetchClientes(),
         tasasStore.fetchTasas()
     ]);
+
+    if (route.query.action === 'new') {
+        openCreateModal();
+        // Limpiar el query param de la URL
+        router.replace({ query: {} });
+    }
 });
 
 // Helpers
