@@ -55,8 +55,24 @@ export const usePrestamosStore = defineStore("prestamos", {
     },
 
     async getPagosByPrestamo(id) {
-      const { data } = await api.get(`/prestamos/${id}/pagos`);
-      return data;
+      try {
+        const response = await api.get(`/pagos/prestamo/${id}`);
+        console.log("API Response for Pagos:", response);
+        const { data } = response;
+        console.log("Pagos Data Body:", data);
+
+        if (Array.isArray(data)) {
+          return data;
+        }
+        // Handle potential enveloped responses
+        if (data && Array.isArray(data.data)) {
+          return data.data;
+        }
+        return data.pagos || data.items || [];
+      } catch (error) {
+        console.error("Error fetching pagos:", error);
+        return [];
+      }
     }
   }
 });

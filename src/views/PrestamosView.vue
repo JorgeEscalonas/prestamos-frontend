@@ -31,6 +31,9 @@
               {{ getClientName(item.clienteId) }}
             </span>
           </template>
+          <template #cell-montoPrestado="{ item }">
+            {{ formatCurrency(item.montoPrestado) }}
+          </template>
           <template #cell-montoTotal="{ item }">
             {{ formatCurrency(item.montoTotal) }}
           </template>
@@ -173,7 +176,7 @@
     <!-- Client Creation Modal -->
     <Modal v-if="showClientModal" :fullScreenBackdrop="true" @close="closeClientModal">
       <template #body>
-         <div class="relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-lg dark:bg-gray-800 sm:p-10 z-[60]">
+         <div class="relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-lg dark:bg-gray-800 sm:p-10 z-60">
           <div class="mb-6 flex items-center justify-between">
             <h3 class="text-xl font-semibold text-gray-800 dark:text-white">
               Registrar Nuevo Cliente
@@ -245,6 +248,7 @@ const currentPrestamo = ref({});
 
 const prestamoColumns = [
   { key: "clienteId", label: "Cliente", headerClass: "w-1/6" },
+  { key: "montoPrestado", label: "Monto Prestado", headerClass: "w-1/6" },
   { key: "montoTotal", label: "Monto Total", headerClass: "w-1/6" },
   { key: "saldoPendiente", label: "Saldo Pendiente", headerClass: "w-1/6" },
   { key: "saldoBolivares", label: "Saldo Pendiente (Bs)", headerClass: "w-1/6" },
@@ -262,12 +266,7 @@ const clientOptions = computed(() => {
     }));
 });
 
-const tasaOptions = computed(() => {
-  return tasas.value.map(t => ({
-    label: `${t.nombre} (${t.valor})`,
-    value: t.id
-  }));
-});
+
 
 const getClientName = (id) => {
   const cliente = clientes.value.find(c => c.id === id);
@@ -282,13 +281,6 @@ const prestamoFields = computed(() => [
     required: true, 
     placeholder: "Buscar cliente por nombre o cédula...",
     options: clientOptions.value
-  },
-  { 
-    name: "tasaId", 
-    label: "Tasa de Cambio", 
-    type: "select", 
-    required: true, 
-    options: tasaOptions.value
   },
   { name: "montoPrestado", label: "Monto a Prestar", type: "number", required: true, placeholder: "Ej. 1000" },
   { name: "porcentaje", label: "Porcentaje Interés", type: "number", required: true, placeholder: "Ej. 10" },

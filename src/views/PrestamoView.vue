@@ -58,8 +58,8 @@
             <template #cell-monto="{ item }">
               {{ formatCurrency(item.monto) }}
             </template>
-            <template #cell-fecha="{ item }">
-              {{ formatDate(item.fecha) }}
+            <template #cell-fechaPago="{ item }">
+              {{ formatDate(item.fechaPago) }}
             </template>
           </DataTable>
           <div v-if="pagos.length === 0" class="text-center py-6 text-gray-500 dark:text-gray-400">
@@ -103,36 +103,41 @@ const pageTitle = computed(() => prestamo.value ? `Detalle de Préstamo` : 'Carg
 
 const pagoColumns = [
   { key: "monto", label: "Monto", headerClass: "text-left" },
-  { key: "fecha", label: "Fecha", headerClass: "text-left" },
-  { key: "metodo", label: "Método", headerClass: "text-left" }, 
+  { key: "fechaPago", label: "Fecha", headerClass: "text-left" },
 ];
 
 onMounted(async () => {
   const id = route.params.id;
   if (id) {
-    // Intentar cargar desde el store primero
-    const cachedPrestamo = prestamosStore.prestamos.find(p => p.id == id);
-    if (cachedPrestamo) {
-      prestamo.value = cachedPrestamo;
-    }
-
+    // 1. Fetch Payments independently (The endpoint exists)
+    loading.value = true;
     try {
-      loading.value = true;
-      // Fetch concurrently
-      const [data, pagosData] = await Promise.all([
-        prestamosStore.getPrestamo(id),
-        prestamosStore.getPagosByPrestamo ? prestamosStore.getPagosByPrestamo(id) : Promise.resolve([]) 
-      ]);
-      
-      if (data) {
-        prestamo.value = data;
-      }
+      // getPagosByPrestamo in store now has internal try-catch and returns array
+      const pagosData = await prestamosStore.getPagosByPrestamo(id);
       pagos.value = pagosData || [];
     } catch (error) {
-      console.error("Error fetching prestamo details:", error);
-    } finally {
-      loading.value = false;
+       console.error("Error fetching pagos:", error);
     }
+
+    // 2. Resolve Prestamo Details
+    // The backend does NOT have a GET /prestamos/:id endpoint.
+    // We must find the loan in the existing list or fetch the list.
+    let foundPrestamo = prestamosStore.prestamos.find(p => p.id == id);
+    
+    if (!foundPrestamo) {
+      try {
+        await prestamosStore.fetchPrestamos({ limit: 100 }); // Try to fetch a larger batch to improve chances of finding it
+        foundPrestamo = prestamosStore.prestamos.find(p => p.id == id);
+      } catch (error) {
+        console.error("Error fetching prestamos list:", error);
+      }
+    }
+
+    if (foundPrestamo) {
+      prestamo.value = foundPrestamo;
+    }
+    
+    loading.value = false;
   }
 });
 
