@@ -1,9 +1,9 @@
 <template>
   <div
-    class="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6 sm:pt-6"
+    class="overflow-hidden rounded-2xl border border-gray-200 bg-white px-5 pt-5 dark:border-gray-800 dark:bg-white/3 sm:px-6 sm:pt-6"
   >
     <div class="flex items-center justify-between">
-      <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Prestamos mensuales</h3>
+      <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Rentabilidad Anual</h3>
 
       <div class="relative h-fit">
         <DropdownMenu :menu-items="menuItems">
@@ -36,27 +36,38 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed } from 'vue'
+import { useDashboardStore } from '@/store/dashboard'
+import { storeToRefs } from 'pinia'
+import VueApexCharts from 'vue3-apexcharts'
 import DropdownMenu from '../common/DropdownMenu.vue'
+
+const dashboardStore = useDashboardStore()
+const { rentabilidad } = storeToRefs(dashboardStore)
+
 const menuItems = [
-  { label: 'View More', onClick: () => console.log('View More clicked') },
-  { label: 'Delete', onClick: () => console.log('Delete clicked') },
+  { label: 'Ver detalles', onClick: () => console.log('View More clicked') },
 ]
 
-import VueApexCharts from 'vue3-apexcharts'
+const series = computed(() => {
+  return [
+    {
+      name: 'Inversión',
+      data: rentabilidad.value.map(item => item.inversion || 0),
+    },
+    {
+      name: 'Ganancia',
+      data: rentabilidad.value.map(item => item.ganancia || 0),
+    },
+  ]
+})
 
-const series = ref([
-  {
-    name: 'Sales',
-    data: [168, 385, 201, 298, 187, 195, 291, 110, 215, 390, 280, 112],
-  },
-])
-
-const chartOptions = ref({
-  colors: ['#465fff'],
+const chartOptions = computed(() => ({
+  colors: ['#465fff', '#9CB9FF'],
   chart: {
     fontFamily: 'Outfit, sans-serif',
     type: 'bar',
+    stacked: true, // Mantener apiladas para comparar relación inversión/ganancia
     toolbar: {
       show: false,
     },
@@ -78,26 +89,19 @@ const chartOptions = ref({
     colors: ['transparent'],
   },
   xaxis: {
-    categories: [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ],
+    categories: rentabilidad.value.map(item => item.mes || ''),
     axisBorder: {
       show: false,
     },
     axisTicks: {
       show: false,
     },
+    labels: {
+      style: {
+        colors: '#64748B',
+        fontSize: '12px'
+      }
+    }
   },
   legend: {
     show: true,
@@ -110,6 +114,16 @@ const chartOptions = ref({
   },
   yaxis: {
     title: false,
+    labels: {
+      style: {
+        colors: '#64748B',
+        fontSize: '10px'
+      },
+      formatter: (val) => {
+        if (val >= 1000) return (val / 1000).toFixed(1) + 'k'
+        return val
+      }
+    }
   },
   grid: {
     yaxis: {
@@ -127,13 +141,9 @@ const chartOptions = ref({
     },
     y: {
       formatter: function (val) {
-        return val.toString()
+        return `$${new Intl.NumberFormat('en-US').format(val)}`
       },
     },
   },
-})
-
-onMounted(() => {
-  // Any additional setup can be done here if needed
-})
+}))
 </script>

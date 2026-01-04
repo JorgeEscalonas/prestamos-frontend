@@ -4,23 +4,23 @@
   >
     <div class="flex flex-col gap-5 mb-6 sm:flex-row sm:justify-between">
       <div class="w-full">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Estadisticas</h3>
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white/90">Flujo de Caja</h3>
         <p class="mt-1 text-gray-500 text-theme-sm dark:text-gray-400">
-          Target you’ve set for each month
+          Ingresos (Pagos) vs Egresos (Préstamos)
         </p>
       </div>
 
       <div class="relative">
         <div class="inline-flex items-center gap-0.5 rounded-lg bg-gray-100 p-0.5 dark:bg-gray-900">
           <button
-            v-for="option in options"
+            v-for="option in periodOptions"
             :key="option.value"
-            @click="selected = option.value"
+            @click="selectedPeriod = option.value"
             :class="[
-              selected === option.value
+              selectedPeriod === option.value
                 ? 'shadow-theme-xs text-gray-900 dark:text-white bg-white dark:bg-gray-800'
                 : 'text-gray-500 dark:text-gray-400',
-              'px-3 py-2 font-medium rounded-md text-theme-sm hover:text-gray-900 hover:shadow-theme-xs dark:hover:bg-gray-800 dark:hover:text-white',
+              'px-3 py-2 font-medium rounded-lg text-theme-sm hover:text-gray-900 hover:shadow-theme-xs dark:hover:bg-gray-800 dark:hover:text-white',
             ]"
           >
             {{ option.label }}
@@ -36,114 +36,134 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref } from 'vue'
-
-const options = [
-  { value: 'optionOne', label: 'Monthly' },
-  { value: 'optionTwo', label: 'Quarterly' },
-  { value: 'optionThree', label: 'Annually' },
-]
-
-const selected = ref('optionOne')
+<script setup>
+import { ref, computed, watch } from 'vue'
+import { useDashboardStore } from '@/store/dashboard'
+import { storeToRefs } from 'pinia'
 import VueApexCharts from 'vue3-apexcharts'
 
-const series = ref([
-  {
-    name: 'Sales',
-    data: [180, 190, 170, 160, 175, 165, 170, 205, 230, 210, 240, 235],
-  },
-  {
-    name: 'Revenue',
-    data: [40, 30, 50, 40, 55, 40, 70, 100, 110, 120, 150, 140],
-  },
-])
+const dashboardStore = useDashboardStore()
+const { flujoCaja } = storeToRefs(dashboardStore)
 
-const chartOptions = ref({
-  legend: {
-    show: false,
-    position: 'top',
-    horizontalAlign: 'left',
-  },
-  colors: ['#465FFF', '#9CB9FF'],
-  chart: {
-    fontFamily: 'Outfit, sans-serif',
-    type: 'area',
-    toolbar: {
-      show: false,
+const periodOptions = [
+  { value: 'mensual', label: 'Mensual' },
+  { value: 'trimestral', label: 'Trimestral' },
+  { value: 'anual', label: 'Anual' },
+]
+
+const selectedPeriod = ref('mensual')
+
+// Fetch data when period changes
+watch(selectedPeriod, (newPeriod) => {
+  dashboardStore.fetchFlujoCaja(newPeriod)
+})
+
+const series = computed(() => {
+  if (!flujoCaja.value || flujoCaja.value.length === 0) {
+    return [
+      { name: 'Ingresos', data: [] },
+      { name: 'Egresos', data: [] }
+    ]
+  }
+
+  return [
+    {
+      name: 'Ingresos',
+      data: flujoCaja.value.map(item => item.ingresos || 0),
     },
-  },
-  fill: {
-    gradient: {
-      enabled: true,
-      opacityFrom: 0.55,
-      opacityTo: 0,
+    {
+      name: 'Egresos',
+      data: flujoCaja.value.map(item => item.egresos || 0),
     },
-  },
-  stroke: {
-    curve: 'straight',
-    width: [2, 2],
-  },
-  markers: {
-    size: 0,
-  },
-  labels: {
-    show: false,
-    position: 'top',
-  },
-  grid: {
-    xaxis: {
-      lines: {
+  ]
+})
+
+const chartOptions = computed(() => {
+  const categories = flujoCaja.value?.map(item => item.periodo) || []
+
+  return {
+    legend: {
+      show: false, // Oculto como en el template
+      position: 'top',
+      horizontalAlign: 'left',
+    },
+    colors: ['#465FFF', '#9CB9FF'], 
+    chart: {
+      fontFamily: 'Outfit, sans-serif',
+      type: 'area',
+      toolbar: {
         show: false,
       },
     },
-    yaxis: {
-      lines: {
-        show: true,
+    fill: {
+      type: 'gradient',
+      gradient: {
+        enabled: true,
+        opacityFrom: 0.55,
+        opacityTo: 0,
       },
     },
-  },
-  dataLabels: {
-    enabled: false,
-  },
-  tooltip: {
-    x: {
-      format: 'dd MMM yyyy',
+    stroke: {
+      curve: 'straight', // Estilo solicitado
+      width: [2, 2],
     },
-  },
-  xaxis: {
-    type: 'category',
-    categories: [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ],
-    axisBorder: {
+    markers: {
+      size: 0, // Estilo solicitado
+    },
+    labels: {
       show: false,
+      position: 'top',
     },
-    axisTicks: {
-      show: false,
+    grid: {
+      xaxis: {
+        lines: {
+          show: false,
+        },
+      },
+      yaxis: {
+        lines: {
+          show: true,
+        },
+      },
     },
-    tooltip: {
+    dataLabels: {
       enabled: false,
     },
-  },
-  yaxis: {
-    title: {
-      style: {
-        fontSize: '0px',
+    tooltip: {
+      x: {
+        show: true,
+      },
+      y: {
+        formatter: (val) => `$${new Intl.NumberFormat('en-US').format(val)}`
+      }
+    },
+    xaxis: {
+      type: 'category',
+      categories: categories,
+      axisBorder: {
+        show: false,
+      },
+      axisTicks: {
+        show: false,
+      },
+      tooltip: {
+        enabled: false,
       },
     },
-  },
+    yaxis: {
+      title: {
+        style: {
+          fontSize: '0px',
+        },
+      },
+      labels: {
+        formatter: (val) => {
+          if (val >= 1000) return (val / 1000).toFixed(1) + 'k'
+          return val
+        }
+      }
+    },
+  }
 })
 </script>
 
