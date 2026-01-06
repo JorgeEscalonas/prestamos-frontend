@@ -2,32 +2,56 @@
   <AdminLayout>
     <PageBreadcrumb :pageTitle="currentPageTitle" />
     <div class="space-y-5 sm:space-y-6">
-      <ComponentCard title="Listado de Clientes">
-        <template #actions>
-          <button
-            @click="openCreateModal"
-            class="inline-flex items-center justify-center gap-2.5 rounded-lg bg-blue-600 px-4 py-2 text-center font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-900"
-          >
-            <span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                class="w-5 h-5"
-              >
-                <path
-                  fill-rule="evenodd"
-                  d="M12 3.75a.75.75 0 01.75.75v6.75h6.75a.75.75 0 010 1.5h-6.75v6.75a.75.75 0 01-1.5 0v-6.75H4.5a.75.75 0 010-1.5h6.75V4.5a.75.75 0 01.75-.75z"
-                  clip-rule="evenodd"
-                />
-              </svg>
+      <!-- Actions Bar -->
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div class="text-sm text-gray-600 dark:text-gray-400">
+          Mostrando {{ paginatedClientes.length }} de {{ clientes.length }} clientes
+        </div>
+        
+        <button
+          @click="openCreateModal"
+          class="inline-flex items-center justify-center gap-2.5 rounded-lg bg-blue-600 px-4 py-2 text-center font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-900"
+        >
+          <span>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              class="w-5 h-5"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M12 3.75a.75.75 0 01.75.75v6.75h6.75a.75.75 0 010 1.5h-6.75v6.75a.75.75 0 01-1.5 0v-6.75H4.5a.75.75 0 010-1.5h6.75V4.5a.75.75 0 01.75-.75z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </span>
+          Registrar Cliente
+        </button>
+      </div>
+
+      <ComponentCard title="Historial de Clientes">
+        <DataTable :columns="clientColumns" :data="paginatedClientes">
+          <template #cell-nombre="{ item }">
+            <span class="text-gray-800 dark:text-white font-medium">
+              {{ item.nombre }}
             </span>
-            Registrar Cliente
-          </button>
-        </template>
-        <DataTable :columns="clientColumns" :data="clientes">
+          </template>
+
+          <template #cell-cedula="{ item }">
+            <span class="text-gray-800 dark:text-white">
+              {{ item.cedula }}
+            </span>
+          </template>
+
+          <template #cell-telefono="{ item }">
+            <span class="text-gray-800 dark:text-white">
+              {{ item.telefono || '-' }}
+            </span>
+          </template>
+
           <template #cell-createdAt="{ item }">
-            <span class="text-gray-500 text-theme-sm dark:text-gray-400">
+            <span class="text-xs text-gray-500 dark:text-gray-400">
               {{ formatDate(item.createdAt) }}
             </span>
           </template>
@@ -36,7 +60,7 @@
               <button
                 @click="handleView(item.id)"
                 class="text-gray-500 hover:text-primary-500 dark:text-gray-400 dark:hover:text-primary-400"
-                title="Ver Detalle"
+                title="Ver Detalles"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -101,6 +125,43 @@
             </div>
           </template>
         </DataTable>
+
+        <!-- Pagination Controls -->
+        <div class="flex items-center justify-between mt-4 px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+          <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-600 dark:text-gray-400">Registros por página:</label>
+            <select
+              v-model.number="pagination.perPage"
+              @change="pagination.currentPage = 1"
+              class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-sm"
+            >
+              <option :value="10">10</option>
+              <option :value="25">25</option>
+              <option :value="50">50</option>
+              <option :value="100">100</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button
+              @click="pagination.currentPage--"
+              :disabled="pagination.currentPage === 1"
+              class="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Anterior
+            </button>
+            <span class="text-sm text-gray-600 dark:text-gray-400">
+              Página {{ pagination.currentPage }} de {{ totalPages }}
+            </span>
+            <button
+              @click="pagination.currentPage++"
+              :disabled="pagination.currentPage >= totalPages"
+              class="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700"
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
       </ComponentCard>
     </div>
 
@@ -146,7 +207,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { storeToRefs } from "pinia";
 import { useRouter } from "vue-router";
 import { useClientesStore } from "@/store/clientes";
@@ -166,6 +227,22 @@ const showCreateModal = ref(false);
 const formLoading = ref(false);
 const isEditing = ref(false);
 const currentClient = ref({});
+
+// Pagination
+const pagination = ref({
+  currentPage: 1,
+  perPage: 10
+});
+
+const totalPages = computed(() => {
+  return Math.ceil(clientes.value.length / pagination.value.perPage);
+});
+
+const paginatedClientes = computed(() => {
+  const start = (pagination.value.currentPage - 1) * pagination.value.perPage;
+  const end = start + pagination.value.perPage;
+  return clientes.value.slice(start, end);
+});
 
 const clientColumns = [
   { key: "nombre", label: "Nombre", headerClass: "w-1/4" },
