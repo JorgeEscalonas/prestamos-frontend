@@ -431,7 +431,7 @@ const loanPaymentHistory = ref([]);
 // Pagination
 const pagination = ref({
   currentPage: 1,
-  perPage: 25
+  perPage: 10
 });
 
 const currentTasa = computed(() => {

@@ -1,13 +1,17 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap') layer(base);
 @import "tailwindcss";
 
 @theme {
   --color-scheme: light dark;
+  --font-outfit: Outfit, sans-serif;
+  --font-family-sans: var(--font-outfit);
 }
 
 @variant dark (&:where(.dark, .dark *));
 
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --font-outfit: Outfit, sans-serif;
+  font-family: var(--font-outfit);
   line-height: 1.5;
   font-weight: 400;
 
@@ -18,12 +22,21 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+html {
+  font-family: var(--font-outfit);
+}
+
+* {
+  font-family: inherit;
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
   background-color: #ffffff;
   color: #1f2937;
+  font-family: var(--font-outfit);
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
